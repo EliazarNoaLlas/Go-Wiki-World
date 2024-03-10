@@ -23,7 +23,7 @@ GoWiki es una aplicación simple de wiki escrita en Go (Golang). Permite a los u
 2. Navega al directorio del proyecto:
 
     ```bash
-    cd GoWiki
+    cd gowiki
     ```
 
 3. Inicia el servidor:

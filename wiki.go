@@ -1,3 +1,12 @@
+/*
+* File              : wiki.go
+* Author            : Eliazar
+* Creation date     : 03/09/2024
+* Last modified by  : Eliazar
+* Last modified date: 03/09/2024
+* Description       : A simple web application for creating and editing wiki pages.
+ */
+
 package main
 
 import (
@@ -11,23 +20,25 @@ import (
 var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
-type Page struct {
-	Title string
-	Body  []byte
+type page struct {
+	// Description: this is the title of the page
+	Title string `json:"title" binding:"required" example:"Cultivos"`
+	// Description: this is the content of the page
+	Body []byte `json:"body" binding:"required" example:"En este artículo aprenderás paso a paso cómo cultivar tomates"`
 }
 
-func (p *Page) save() error {
+func (p *page) save() error {
 	filename := p.Title + ".txt"
 	return os.WriteFile(filename, p.Body, 0600)
 }
 
-func loadPage(title string) (*Page, error) {
+func loadPage(title string) (*page, error) {
 	filename := title + ".txt"
 	body, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	return &Page{Title: title, Body: body}, nil
+	return &page{Title: title, Body: body}, nil
 }
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
@@ -39,7 +50,6 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 		}
 		fn(w, r, m[2])
 	}
-
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
@@ -51,9 +61,17 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 	renderTemplate(w, "view", p)
 }
 
+func editHandler(w http.ResponseWriter, _ *http.Request, title string) {
+	p, err := loadPage(title)
+	if err != nil {
+		p = &page{Title: title}
+	}
+	renderTemplate(w, "edit", p)
+}
+
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
+	p := &page{Title: title, Body: []byte(body)}
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -62,15 +80,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-	renderTemplate(w, "edit", p)
-}
-
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+func renderTemplate(w http.ResponseWriter, tmpl string, p *page) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
